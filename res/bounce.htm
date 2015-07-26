@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<head>
+<!-- http://sixrevisions.com/html/bouncing-a-ball-around-with-html5-and-javascript/ -->
+<meta http-equiv="x-ua-compatible" content="IE=edge" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script>
+var context;
+var cx;
+var cy;
+var x;
+var y;
+var dx=6;
+var dy=6;
+
+function draw(){
+	context.clearRect(0, 0, cx, cy);
+
+	context.beginPath();
+	context.fillStyle="#0000ff";
+	context.arc(x,y,10,0,Math.PI*2,true);
+	context.closePath();
+	context.fill();
+
+	if( x<0 || x>cx)
+    	dx=-dx;
+
+	if( y<0 || y>cy)
+		dy=-dy;
+
+	x+=dx;
+	y+=dy;
+}
+
+function closedialog() {
+    window.external.closedialog();
+}
+
+window.onload = function() {
+    var o = document.getElementById('myCanvas');
+	context= o.getContext('2d');
+    cx = o.width;
+    cy = o.height;
+    x = cx / 2;
+    y = cy / 2;
+    setInterval(draw, 20); 
+}
+</script>
+<style type="text/css">
+body {
+  background-color: #efffef;
+  font: normal 10pt calibri;
+}
+#myCanvas {
+  background:#fff;
+  border:1px solid #cbcbcb;
+}
+.button {
+    background: #4f4fff;
+    border: none;
+    padding: 5px 12px 5px 12px;
+    color: #FFF;
+    box-shadow: 1px 1px 5px #B6B6B6;
+    border-radius: 3px;
+    text-shadow: 1px 1px 1px navy;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+
+.button:hover {
+    background: #8f8fff;
+}
+</style>
+</head>
+<body>
+<h1>HTML5 Canvas</h1>
+<div><canvas id="myCanvas" width="300" height="110"></canvas></div>
+<input type="button" class="button" value="Close" onclick="closedialog()"></input>
+</body>
+</html>
