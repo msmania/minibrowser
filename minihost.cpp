@@ -15,8 +15,8 @@
 //
 
 // For testing: verify these destructors are called on exit
-// minibrowser!MiniBrowserSite::`scalar deleting destructor'
-// minibrowser!CExternalDispatch::`scalar deleting destructor'
+// minib!MiniBrowserSite::`scalar deleting destructor'
+// minib!CExternalDispatch::`scalar deleting destructor'
 
 #include <windows.h>
 #include <tchar.h>
@@ -309,6 +309,9 @@ STDMETHODIMP_(ULONG) CExternalDispatch::Release(void) {
 
 // ---------- IDispatch ----------
 
+#define DISP_ID_CLOSEDIALOG 100
+#define DISP_ID_LOG         101
+
 STDMETHODIMP CExternalDispatch::GetIDsOfNames(
         /* [in] */ __RPC__in REFIID riid,
         /* [size_is][in] */ __RPC__in_ecount_full(cNames) LPOLESTR *rgszNames,
@@ -318,13 +321,26 @@ STDMETHODIMP CExternalDispatch::GetIDsOfNames(
     // Assume some degree of success
     HRESULT hr = NOERROR;
 
+    struct {
+        DISPID id;
+        LPCWSTR name;
+    } const Mapping[] = {
+        {DISP_ID_CLOSEDIALOG, L"closedialog"},
+        {DISP_ID_LOG, L"log"},
+    };
+
     // Hardcoded mapping for this sample
     // A more usual procedure would be to use a TypeInfo
     for (UINT i = 0; i < cNames; ++i) {
-        if (CompareString(lcid, NORM_IGNOREWIDTH, METHOD_CLOSEDIALOG, -1, rgszNames[i], -1) == CSTR_EQUAL) {
-            rgDispId[i] = DISP_ID_CLOSEDIALOG;
+        bool Found = false;
+        for (int j = 0; j < ARRAYSIZE(Mapping); ++j) {
+            if (CompareString(lcid, NORM_IGNOREWIDTH, Mapping[j].name, -1, rgszNames[i], -1) == CSTR_EQUAL) {
+                Found = true;
+                rgDispId[i] = Mapping[j].id;
+                break;
+            }
         }
-        else {
+        if (!Found) {
             // One or more are unknown so set the return code accordingly
             rgDispId[i] = DISPID_UNKNOWN;
             hr = DISP_E_UNKNOWNNAME;
@@ -332,6 +348,12 @@ STDMETHODIMP CExternalDispatch::GetIDsOfNames(
     }
 
     return hr;
+}
+
+void Log(LPCWSTR Msg) {
+    WCHAR LineBuf[1024];
+    StringCbPrintf(LineBuf, sizeof(LineBuf), L"%s\n", Msg);
+    OutputDebugString(LineBuf);
 }
 
 STDMETHODIMP CExternalDispatch::Invoke(
@@ -358,6 +380,14 @@ STDMETHODIMP CExternalDispatch::Invoke(
         case DISP_ID_CLOSEDIALOG:
             EndDialog(GetParent(_WebOC), IDOK);
             hr = S_OK;
+            break;
+        case DISP_ID_LOG:
+            hr = E_INVALIDARG;
+            if (pDispParams && pDispParams->cArgs == 1 &&
+                               pDispParams->rgvarg[0].vt == VT_BSTR) {
+                Log(pDispParams->rgvarg[0].bstrVal);
+                hr = S_OK;
+            }
             break;
         default:
             hr = E_INVALIDARG;

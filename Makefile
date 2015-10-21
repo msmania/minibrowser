@@ -10,7 +10,7 @@ CC=cl
 LINKER=link
 RM=del /q
 
-TARGET=minibrowser.exe
+TARGET=minib.exe
 OBJS=\
     $(OBJDIR)\minibrowser.res\
     $(OBJDIR)\minihost.obj\

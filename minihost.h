@@ -8,9 +8,6 @@
 
 #define WEBOC_START (WM_USER + 1)
 
-#define METHOD_CLOSEDIALOG L"closedialog"
-#define DISP_ID_CLOSEDIALOG 100
-
 class CExternalDispatch : public IDispatch {
 protected:
     ULONG _ulRefs;

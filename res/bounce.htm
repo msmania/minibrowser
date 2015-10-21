@@ -12,6 +12,15 @@ var y;
 var dx=6;
 var dy=6;
 
+var logthrot = 0;
+
+function log(s) {
+    try {
+        window.external.log(String(s));
+    }
+    catch(e) {}
+}
+
 function draw(){
 	context.clearRect(0, 0, cx, cy);
 
@@ -29,10 +38,19 @@ function draw(){
 
 	x+=dx;
 	y+=dy;
+
+    ++logthrot;
+    if (logthrot == 10) {
+        log('(' + x + ', ' + y + ')');
+        logthrot = 0;
+    }
 }
 
 function closedialog() {
-    window.external.closedialog();
+    try {
+        window.external.closedialog();
+    }
+    catch(e) {}
 }
 
 window.onload = function() {
