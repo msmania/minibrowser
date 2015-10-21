@@ -6,8 +6,6 @@
 #include <Exdisp.h> // IWebBrowser2
 #include <Mshtmhst.h> // IDocHostUIHandler
 
-#define WEBOC_START (WM_USER + 1)
-
 class CExternalDispatch : public IDispatch {
 protected:
     ULONG _ulRefs;
@@ -64,6 +62,7 @@ protected:
     CComPtr<IWebBrowser2> _WebBrowser;
     CComPtr<IDispatch> _External;
 
+    MiniBrowserSite(HWND h);
     virtual ~MiniBrowserSite();
 
     void Cleanup();
@@ -71,8 +70,10 @@ protected:
 
 public:
     static LRESULT CALLBACK MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM l);
+    static MiniBrowserSite *GetFromHWND(HWND h);
 
-    MiniBrowserSite(HWND h);
+    HRESULT Navigate(LPCWSTR url);
+    HRESULT Stop();
 
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject);

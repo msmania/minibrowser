@@ -49,23 +49,10 @@ LRESULT CALLBACK MiniBrowserSite::MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM 
         break;
 
     case WM_DESTROY:
-        BrowserSite = (MiniBrowserSite*)GetWindowLongPtr(h, GWLP_USERDATA);
+        BrowserSite = MiniBrowserSite::GetFromHWND(h);
         if (BrowserSite) {
             BrowserSite->Cleanup();
             BrowserSite->Release(); // do not 'delete BrowserSite' directly
-        }
-        break;
-
-    case WEBOC_START:
-        BrowserSite = (MiniBrowserSite*)GetWindowLongPtr(h, GWLP_USERDATA);
-        if (BrowserSite) {
-            WCHAR ModuleName[MAX_PATH];
-            if  (GetModuleFileName(nullptr, ModuleName, sizeof(ModuleName))) {
-                WCHAR Url[MAX_PATH];
-                if (SUCCEEDED(StringCchPrintf(Url, MAX_PATH, L"res://%s/bounce.htm", ModuleName))) {
-                    BrowserSite->_WebBrowser->Navigate(Url, 0, 0, 0, 0);
-                }
-            }
         }
         break;
 
@@ -77,11 +64,32 @@ LRESULT CALLBACK MiniBrowserSite::MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM 
     return lr;
 }
 
+MiniBrowserSite *MiniBrowserSite::GetFromHWND(HWND h) {
+    return h ? (MiniBrowserSite*)GetWindowLongPtr(h, GWLP_USERDATA) : nullptr;
+}
+
 MiniBrowserSite::MiniBrowserSite(HWND h) : _ulRefs(1), _WebOC(h) {
     _External.Attach(new CExternalDispatch(h));
 }
 
 MiniBrowserSite::~MiniBrowserSite() {}
+
+HRESULT MiniBrowserSite::Navigate(LPCWSTR url) {
+    HRESULT hr = E_POINTER;
+    if (_WebBrowser != nullptr) {
+        CComBSTR UrlCopy(url);
+        hr = _WebBrowser->Navigate(UrlCopy, nullptr, nullptr, nullptr, nullptr);
+    }
+    return hr;
+}
+
+HRESULT MiniBrowserSite::Stop() {
+    HRESULT hr = E_POINTER;
+    if (_WebBrowser != nullptr) {
+        hr = _WebBrowser->Stop();
+    }
+    return hr;
+}
 
 void MiniBrowserSite::Cleanup() {
     if (_WebBrowser != nullptr) {
