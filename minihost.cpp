@@ -14,28 +14,38 @@
 // https://msdn.microsoft.com/en-us/library/aa753260(v=vs.85).aspx
 //
 
+// For testing: verify these destructors are called on exit
+// minibrowser!MiniBrowserSite::`scalar deleting destructor'
+// minibrowser!CExternalDispatch::`scalar deleting destructor'
+
 #include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
 #include "minihost.h"
 
 LRESULT CALLBACK MiniBrowserSite::MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM l) {
+    LRESULT lr = 0;
     MiniBrowserSite *BrowserSite = nullptr;
 
     switch (m) {
     case WM_CREATE:
+        // https://msdn.microsoft.com/en-us/library/windows/desktop/ms632619(v=vs.85).aspx
+        //
+        lr = -1;
         BrowserSite = new MiniBrowserSite(h);
-        if (BrowserSite == nullptr || FAILED(BrowserSite->InPlaceActivate())) {
-            if (BrowserSite)
-                delete BrowserSite;
-
-            // https://msdn.microsoft.com/en-us/library/windows/desktop/ms632619(v=vs.85).aspx
-            //
-            return -1;
+        if (BrowserSite) {
+            if (SUCCEEDED(BrowserSite->InPlaceActivate())) {
+                SetLastError(0);
+                SetWindowLongPtr(h, GWLP_USERDATA, (LONG_PTR)BrowserSite);
+                if (GetLastError() == 0) {
+                    lr = 0;
+                }
+            }
+            if (lr != 0) {
+                BrowserSite->Cleanup();
+                BrowserSite->Release();
+            }
         }
-
-        SetWindowLongPtr(h, GWLP_USERDATA, (LONG_PTR)BrowserSite);
-        BrowserSite->AddRef();
         break;
 
     case WM_DESTROY:
@@ -60,16 +70,15 @@ LRESULT CALLBACK MiniBrowserSite::MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM 
         break;
 
     default:
-        return DefWindowProc(h, m, w, l);
+        lr = DefWindowProc(h, m, w, l);
+        break;
     }
 
-    return 0;
+    return lr;
 }
 
-MiniBrowserSite::MiniBrowserSite(HWND h) : _ulRefs(0), _WebOC(h) {
-    CExternalDispatch *p = new CExternalDispatch(h);
-    p->AddRef();
-    _External.Attach(p);
+MiniBrowserSite::MiniBrowserSite(HWND h) : _ulRefs(1), _WebOC(h) {
+    _External.Attach(new CExternalDispatch(h));
 }
 
 MiniBrowserSite::~MiniBrowserSite() {}
@@ -78,18 +87,19 @@ void MiniBrowserSite::Cleanup() {
     if (_WebBrowser != nullptr) {
         _WebBrowser->Quit();
 
-        CComPtr<IOleObject> OleObject;
-        if (SUCCEEDED(_WebBrowser->QueryInterface(&OleObject))) {
+        CComQIPtr<IOleObject> OleObject(_WebBrowser);
+        if (OleObject != nullptr) {
             OleObject->SetClientSite(nullptr);
             OleObject->Close(OLECLOSE::OLECLOSE_NOSAVE);
         }
     }
+    if (_External != nullptr) {
+        _External.Release();
+    }
 }
 
 HRESULT MiniBrowserSite::InPlaceActivate() {
-    HRESULT hr = S_OK;
-
-    hr = CoCreateInstance(CLSID_WebBrowser, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_WebBrowser));
+    HRESULT hr = CoCreateInstance(CLSID_WebBrowser, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_WebBrowser));
     if (SUCCEEDED(hr)) {
         CComPtr<IOleObject> OleObject;
         hr = _WebBrowser->QueryInterface(IID_PPV_ARGS(&OleObject));
@@ -105,38 +115,25 @@ HRESULT MiniBrowserSite::InPlaceActivate() {
             }
         }
     }
-
     return hr;
 }
 
 // ---------- IUnknown ----------
 
+#pragma warning(push)
+#pragma warning(disable : 4838)
+// warning C4838: conversion from 'DWORD' to 'int' requires a narrowing conversion
 HRESULT STDMETHODCALLTYPE MiniBrowserSite::QueryInterface(REFIID riid, void **ppvObject) {
-    if (ppvObject == nullptr) {
-        return E_POINTER;
-    }
-    else if (IsEqualIID(riid, IID_IUnknown)) {
-        *ppvObject = (IOleInPlaceSite *)this;
-    }
-    else if (IsEqualIID(riid, IID_IOleClientSite)) {
-        *ppvObject = (IOleClientSite *)this;
-    }
-    else if (IsEqualIID(riid, IID_IOleWindow)) {
-        *ppvObject = (IOleWindow *)this;
-    }
-    else if (IsEqualIID(riid, IID_IOleInPlaceSite)) {
-        *ppvObject = (IOleInPlaceSite *)this;
-    }
-    else if (IsEqualIID(riid, IID_IDocHostUIHandler)) {
-        *ppvObject = (IDocHostUIHandler *)this;
-    }
-    else {
-        *ppvObject = nullptr;
-        return E_NOINTERFACE;
-    }
-    AddRef();
-    return NOERROR;
+    const QITAB QITable[] = {
+        QITABENT(MiniBrowserSite, IOleClientSite),
+        QITABENT(MiniBrowserSite, IOleWindow),
+        QITABENT(MiniBrowserSite, IOleInPlaceSite),
+        QITABENT(MiniBrowserSite, IDocHostUIHandler),
+        { 0 },
+    };
+    return QISearch(this, QITable, riid, ppvObject);
 }
+#pragma warning(pop)
 
 STDMETHODIMP_(ULONG) MiniBrowserSite::AddRef(void) {
     return InterlockedIncrement(&_ulRefs);
@@ -144,11 +141,10 @@ STDMETHODIMP_(ULONG) MiniBrowserSite::AddRef(void) {
 
 STDMETHODIMP_(ULONG) MiniBrowserSite::Release(void) {
     ULONG cref = (ULONG)InterlockedDecrement(&_ulRefs);
-    if (cref > 0) {
-        return cref;
+    if (cref == 0) {
+        delete this;
     }
-    delete this;
-    return 0;
+    return cref;
 }
 
 // ---------- IOleClientSite ----------
@@ -281,29 +277,23 @@ HRESULT STDMETHODCALLTYPE MiniBrowserSite::GetExternal(
     return _External.CopyTo(ppDispatch);
 }
 
-CExternalDispatch::CExternalDispatch(HWND h) : _ulRefs(0), _WebOC(h) {}
+CExternalDispatch::CExternalDispatch(HWND h) : _ulRefs(1), _WebOC(h) {}
 
 CExternalDispatch::~CExternalDispatch() {}
 
 // ---------- IUnknown ----------
 
+#pragma warning(push)
+#pragma warning(disable : 4838)
+// warning C4838: conversion from 'DWORD' to 'int' requires a narrowing conversion
 HRESULT STDMETHODCALLTYPE CExternalDispatch::QueryInterface(REFIID riid, void **ppvObject) {
-    if (ppvObject == nullptr) {
-        return E_POINTER;
-    }
-    else if (IsEqualIID(riid, IID_IUnknown)) {
-        *ppvObject = (IUnknown *)this;
-    }
-    else if (IsEqualIID(riid, IID_IDispatch)) {
-        *ppvObject = (IDispatch *)this;
-    }
-    else {
-        *ppvObject = nullptr;
-        return E_NOINTERFACE;
-    }
-    AddRef();
-    return NOERROR;
+    const QITAB QITable[] = {
+        QITABENT(CExternalDispatch, IDispatch),
+        { 0 },
+    };
+    return QISearch(this, QITable, riid, ppvObject);
 }
+#pragma warning(pop)
 
 STDMETHODIMP_(ULONG) CExternalDispatch::AddRef(void) {
     return InterlockedIncrement(&_ulRefs);
@@ -311,11 +301,10 @@ STDMETHODIMP_(ULONG) CExternalDispatch::AddRef(void) {
 
 STDMETHODIMP_(ULONG) CExternalDispatch::Release(void) {
     ULONG cref = (ULONG)InterlockedDecrement(&_ulRefs);
-    if (cref > 0) {
-        return cref;
+    if (cref == 0) {
+        delete this;
     }
-    delete this;
-    return 0;
+    return cref;
 }
 
 // ---------- IDispatch ----------
@@ -362,9 +351,19 @@ STDMETHODIMP CExternalDispatch::Invoke(
         _Out_opt_  EXCEPINFO *pExcepInfo,
         /* [annotation][out] */ 
         _Out_opt_  UINT *puArgErr) {
-    if (dispIdMember == DISP_ID_CLOSEDIALOG && wFlags & DISPATCH_METHOD) {
-        EndDialog(GetParent(_WebOC), IDOK);
+    HRESULT hr = E_INVALIDARG;
+
+    if (wFlags & DISPATCH_METHOD) {
+        switch (dispIdMember) {
+        case DISP_ID_CLOSEDIALOG:
+            EndDialog(GetParent(_WebOC), IDOK);
+            hr = S_OK;
+            break;
+        default:
+            hr = E_INVALIDARG;
+            break;
+        }
     }
 
-    return S_OK;
+    return hr;
 }
