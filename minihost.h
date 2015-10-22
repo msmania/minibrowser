@@ -74,6 +74,7 @@ public:
 
     HRESULT Navigate(LPCWSTR url);
     HRESULT Stop();
+    HRESULT Refresh(RefreshConstants Level);
 
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject);

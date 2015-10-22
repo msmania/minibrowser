@@ -36,6 +36,12 @@ INT_PTR CALLBACK DlgProc(HWND Dlg, UINT Msg, WPARAM w, LPARAM l) {
                 BrowserSite->Stop();
             }
             break;
+        case IDC_REFRESH:
+            BrowserSite = MiniBrowserSite::GetFromHWND(GetDlgItem(Dlg, IDC_WEBOC));
+            if (BrowserSite != nullptr) {
+                BrowserSite->Refresh(REFRESH_COMPLETELY);
+            }
+            break;
         case IDCANCEL:
             EndDialog(Dlg, LOWORD(w));
             break;

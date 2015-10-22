@@ -91,6 +91,18 @@ HRESULT MiniBrowserSite::Stop() {
     return hr;
 }
 
+HRESULT MiniBrowserSite::Refresh(RefreshConstants Level) {
+    HRESULT hr = E_POINTER;
+    if (_WebBrowser != nullptr) {
+        VARIANT var;
+        VariantInit(&var);
+        var.vt = VT_I4;
+        var.lVal = Level;
+        hr = _WebBrowser->Refresh2(&var);
+    }
+    return hr;
+}
+
 void MiniBrowserSite::Cleanup() {
     if (_WebBrowser != nullptr) {
         _WebBrowser->Quit();
