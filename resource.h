@@ -8,5 +8,6 @@
 #define IDC_STOP    1003
 #define IDC_URL     1004
 #define IDC_REFRESH 1005
+#define IDC_INFO    1006
 
 #define MINIHOST "MINIHOST"

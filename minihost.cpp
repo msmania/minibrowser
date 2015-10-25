@@ -21,7 +21,16 @@
 #include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
+#include <Mshtml.h> // IHTMLDocument
 #include "minihost.h"
+
+void Log(LPCWSTR Format, ...) {
+    WCHAR LineBuf[1024];
+    va_list v;
+    va_start(v, Format);
+    StringCbVPrintf(LineBuf, sizeof(LineBuf), Format, v);
+    OutputDebugString(LineBuf);
+}
 
 LRESULT CALLBACK MiniBrowserSite::MiniHostProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     LRESULT lr = 0;
@@ -99,6 +108,24 @@ HRESULT MiniBrowserSite::Refresh(RefreshConstants Level) {
         var.vt = VT_I4;
         var.lVal = Level;
         hr = _WebBrowser->Refresh2(&var);
+    }
+    return hr;
+}
+
+HRESULT MiniBrowserSite::DumpInfo() {
+    HRESULT hr = E_POINTER;
+    if (_WebBrowser != nullptr) {
+        LPVOID p = nullptr;
+        CComPtr<IDispatch> DocDispatch;
+        hr = _WebBrowser->get_Document(&DocDispatch); // return S_FALSE if doc is empty
+        if (hr == S_OK) {
+            CComPtr<IHTMLDocument> Doc;
+            hr = DocDispatch->QueryInterface(&Doc);
+            if (SUCCEEDED(hr)) {
+                p = (IHTMLDocument*)Doc;
+            }
+        }
+        Log(L"IHTMLDocument* = %p\n", p);
     }
     return hr;
 }
@@ -370,12 +397,6 @@ STDMETHODIMP CExternalDispatch::GetIDsOfNames(
     return hr;
 }
 
-void Log(LPCWSTR Msg) {
-    WCHAR LineBuf[1024];
-    StringCbPrintf(LineBuf, sizeof(LineBuf), L"%s\n", Msg);
-    OutputDebugString(LineBuf);
-}
-
 STDMETHODIMP CExternalDispatch::Invoke(
         /* [annotation][in] */ 
         _In_  DISPID dispIdMember,
@@ -405,7 +426,7 @@ STDMETHODIMP CExternalDispatch::Invoke(
             hr = E_INVALIDARG;
             if (pDispParams && pDispParams->cArgs == 1 &&
                                pDispParams->rgvarg[0].vt == VT_BSTR) {
-                Log(pDispParams->rgvarg[0].bstrVal);
+                Log(L"%s\n", pDispParams->rgvarg[0].bstrVal);
                 hr = S_OK;
             }
             break;
