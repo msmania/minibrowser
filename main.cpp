@@ -40,6 +40,7 @@ HRESULT OnCommand(HWND Dlg, WORD Cmd) {
 INT_PTR CALLBACK DlgProc(HWND Dlg, UINT Msg, WPARAM w, LPARAM l) {
     switch (Msg) {
     case WM_INITDIALOG:
+        SetDlgItemText(Dlg, IDC_URL, L"res://minib.exe/test.htm");
         return 1;
 
     case WM_COMMAND:

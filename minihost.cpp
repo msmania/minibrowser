@@ -358,6 +358,7 @@ STDMETHODIMP_(ULONG) CExternalDispatch::Release(void) {
 
 #define DISP_ID_CLOSEDIALOG 100
 #define DISP_ID_LOG         101
+#define DISP_ID_DPI         102
 
 STDMETHODIMP CExternalDispatch::GetIDsOfNames(
         /* [in] */ __RPC__in REFIID riid,
@@ -374,6 +375,7 @@ STDMETHODIMP CExternalDispatch::GetIDsOfNames(
     } const Mapping[] = {
         {DISP_ID_CLOSEDIALOG, L"closedialog"},
         {DISP_ID_LOG, L"log"},
+        {DISP_ID_DPI, L"dpi"},
     };
 
     // Hardcoded mapping for this sample
@@ -427,6 +429,23 @@ STDMETHODIMP CExternalDispatch::Invoke(
             if (pDispParams && pDispParams->cArgs == 1 &&
                                pDispParams->rgvarg[0].vt == VT_BSTR) {
                 Log(L"%s\n", pDispParams->rgvarg[0].bstrVal);
+                hr = S_OK;
+            }
+            break;
+        case DISP_ID_DPI:
+            hr = E_INVALIDARG;
+            if (pDispParams
+                /*&& pDispParams->cArgs == 2
+                && pDispParams->rgvarg[0].vt == VT_I4
+                && pDispParams->rgvarg[1].vt == VT_I4*/) {
+                RECT r;
+                GetWindowRect(GetParent(_WebOC), &r);
+                SetWindowPos(_WebOC, nullptr,
+                    0, 0,
+                    r.right - r.left - 30,
+                    r.bottom - r.top - 90,
+                    SWP_NOZORDER | SWP_NOMOVE);
+                RedrawWindow(GetParent(_WebOC), nullptr, nullptr, RDW_ERASE | RDW_INVALIDATE);
                 hr = S_OK;
             }
             break;

@@ -55,6 +55,7 @@ dirs:
 
 $(OUTDIR)\$(TARGET): $(OBJS)
     $(LINKER) $(LFLAGS) $(LIBS) /PDB:"$(@R).pdb" /OUT:$@ $**
+    MT -nologo -manifest res\manifest.xml -outputresource:$@;1
 
 .cpp{$(OBJDIR)}.obj:
     $(CC) $(CFLAGS) $<

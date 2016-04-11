@@ -21,3 +21,4 @@ BEGIN
 END
 
 BOUNCE.HTM    HTML    "res\\bounce.htm"
+TEST.HTM      HTML    "res\\test.htm"
