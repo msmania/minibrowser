@@ -10,4 +10,6 @@
 #define IDC_REFRESH 1005
 #define IDC_INFO    1006
 
+#define IDC_UPDATE_DPI 2001
+
 #define MINIHOST "MINIHOST"

@@ -76,6 +76,7 @@ public:
     HRESULT Stop();
     HRESULT Refresh(RefreshConstants Level);
     HRESULT DumpInfo();
+    HRESULT UpdateDpi();
 
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject);

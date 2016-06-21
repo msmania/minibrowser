@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
+#include <ShellScalingApi.h>
 #include "resource.h"
 #include "minihost.h"
 
@@ -32,6 +33,9 @@ HRESULT OnCommand(HWND Dlg, WORD Cmd) {
         case IDC_INFO:
             hr = BrowserSite->DumpInfo();
             break;
+        case IDC_UPDATE_DPI:
+            hr = BrowserSite->UpdateDpi();
+            break;
         }
     }
     return hr;
@@ -51,7 +55,13 @@ INT_PTR CALLBACK DlgProc(HWND Dlg, UINT Msg, WPARAM w, LPARAM l) {
             OnCommand(Dlg, LOWORD(w));
         }
         break;
+
+    case WM_WINDOWPOSCHANGED:
+    case WM_DISPLAYCHANGE:
+        // OnCommand(Dlg, IDC_UPDATE_DPI);
+        break;
     }
+
     return 0;
 }
 
@@ -66,6 +76,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPWSTR lpCmdLine, in
     wc.hInstance = hInstance;
     wc.lpfnWndProc = MiniBrowserSite::MiniHostProc;
     wc.lpszClassName = MINIHOST;
+
+    if (lpCmdLine[0] >= L'0' && lpCmdLine[0] <= L'2') {
+        SetProcessDpiAwareness((PROCESS_DPI_AWARENESS)(lpCmdLine[0] - L'0'));
+    }
 
     if (RegisterClassExA(&wc)) {
         DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc);

@@ -19,10 +19,13 @@
 // minib!CExternalDispatch::`scalar deleting destructor'
 
 #include <windows.h>
+#include <initguid.h>
 #include <tchar.h>
 #include <strsafe.h>
 #include <Mshtml.h> // IHTMLDocument
 #include "minihost.h"
+
+DEFINE_GUID(CGID_CmdGroup, 0xa11452bc, 0xe055, 0x4e56, 0xa1, 0x51, 0x7b, 0x16, 0xdb, 0xb4, 0x54, 0x4e);
 
 void Log(LPCWSTR Format, ...) {
     WCHAR LineBuf[1024];
@@ -126,6 +129,26 @@ HRESULT MiniBrowserSite::DumpInfo() {
             }
         }
         Log(L"IHTMLDocument* = %p\n", p);
+    }
+    return hr;
+}
+
+HRESULT MiniBrowserSite::UpdateDpi() {
+    HRESULT hr = E_POINTER;
+    if (_WebBrowser != nullptr) {
+        CComPtr<IDispatch> DocDispatch;
+        hr = _WebBrowser->get_Document(&DocDispatch); // return S_FALSE if doc is empty
+        if (hr == S_OK) {
+            CComPtr<IHTMLDocument> Doc;
+            hr = DocDispatch->QueryInterface(&Doc);
+            if (SUCCEEDED(hr)) {
+                CComPtr<IOleCommandTarget> pOleCommandTarget;
+                hr = Doc->QueryInterface(IID_IOleCommandTarget, (void**)&pOleCommandTarget);
+                if (SUCCEEDED(hr)) {
+                    hr = pOleCommandTarget->Exec(&CGID_CmdGroup, 0x50, 0, 0, nullptr);
+                }
+            }
+        }
     }
     return hr;
 }

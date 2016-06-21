@@ -1,9 +1,11 @@
 !IF "$(PLATFORM)"=="X64"
 OUTDIR=bin64
 OBJDIR=obj64
+ARCH=amd64
 !ELSE
 OUTDIR=bin
 OBJDIR=obj
+ARCH=x86
 !ENDIF
 
 CC=cl
@@ -11,12 +13,15 @@ LINKER=link
 RM=del /q
 
 TARGET=minib.exe
+
 OBJS=\
     $(OBJDIR)\minibrowser.res\
     $(OBJDIR)\minihost.obj\
-    $(OBJDIR)\main.obj
+    $(OBJDIR)\main.obj\
+
 LIBS=\
-    user32.lib
+    user32.lib\
+    shcore.lib\
 
 # C4100: unreferenced parameter
 CFLAGS=\
@@ -55,7 +60,9 @@ dirs:
 
 $(OUTDIR)\$(TARGET): $(OBJS)
     $(LINKER) $(LFLAGS) $(LIBS) /PDB:"$(@R).pdb" /OUT:$@ $**
-    MT -nologo -manifest res\manifest.xml -outputresource:$@;1
+    MT -nologo -manifest res\manifest.xml\
+       -identity:"Minib, type=win32, version=1.0.0.0, processorArchitecture=$(ARCH)"\
+       -outputresource:$@;1
 
 .cpp{$(OBJDIR)}.obj:
     $(CC) $(CFLAGS) $<
